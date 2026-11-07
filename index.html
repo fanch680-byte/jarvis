@@ -294,15 +294,24 @@ const COMMANDES_JARVIS = {
 };
 
 /* ============================================================
-   📱 CONTACTS (à personnaliser !)
+   📱 CONTACTS INTELLIGENTS (Sauvegardés sur le téléphone)
    ============================================================ */
-const CONTACTS = {
-  "paul": { "tel": "+33612345678", "email": "paul@example.com" },
-  "marie": { "tel": "+33687654321", "email": "marie@example.com" },
-  "jean": { "tel": "+33611112222", "email": "jean@example.com" },
-  "papa": { "tel": "+33633334444", "email": "papa@example.com" },
-  "maman": { "tel": "+33655556666", "email": "maman@example.com" }
-};
+let CONTACTS = JSON.parse(localStorage.getItem('jarvis_contacts'));
+
+if (!CONTACTS) {
+  CONTACTS = {
+    "paul":  { "tel": "+33612345678", "email": "paul@example.com" },
+    "marie": { "tel": "+33687654321", "email": "marie@example.com" },
+    "jean":  { "tel": "+33611112222", "email": "jean@example.com" },
+    "papa":  { "tel": "+33633334444", "email": "papa@example.com" },
+    "maman": { "tel": "+33655556666", "email": "maman@example.com" }
+  };
+  localStorage.setItem('jarvis_contacts', JSON.stringify(CONTACTS));
+}
+
+function sauvegarderContacts() {
+  localStorage.setItem('jarvis_contacts', JSON.stringify(CONTACTS));
+}
 
 /* ============================================================
    ARC REACTOR
@@ -495,7 +504,6 @@ function envoyerMail(nom) {
 }
 
 function ouvrirApp(nom) {
-  // Apps Android (intent://)
   const appsAndroid = {
     whatsapp: { pkg: 'com.whatsapp', fallback: 'https://wa.me/' },
     instagram: { pkg: 'com.instagram.android', fallback: 'https://instagram.com' },
@@ -517,15 +525,14 @@ function ouvrirApp(nom) {
   }
 
   if (estMobile() && /Android/i.test(navigator.userAgent)) {
-    // Tentative d'ouverture de l'app native
-    const intentUrl = `intent://#Intent;package=${app.pkg};end`;
+    // 🌟 CORRECTION ICI : ajout de action=MAIN et category=LAUNCHER
+    const intentUrl = `intent://#Intent;package=${app.pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
     window.location.href = intentUrl;
     setTimeout(() => {
       if (app.fallback) window.location.href = app.fallback;
     }, 1500);
     dire(`Oui Monsieur, j'ouvre ${nom}.`);
   } else if (app.fallback) {
-    // Desktop ou iOS : ouvre la version web
     window.open(app.fallback, '_blank');
     dire(`Oui Monsieur, j'ouvre la version web de ${nom}.`);
   } else {
@@ -562,6 +569,35 @@ function processCommand(raw) {
 }
 
 function repondre(req, raw) {
+  // 📱 AJOUTER UN CONTACT À LA VOIX
+  const ajoutContactMatch = req.match(/(?:ajoute|enregistre)\s+(?:un\s+)?contact\s+(?:pour\s+)?([a-z]+)\s+(?:au|numero|numéro)\s+([0-9+ ]+)/);
+  if (ajoutContactMatch) {
+    let nom = ajoutContactMatch[1].trim();
+    let tel = ajoutContactMatch[2].replace(/\s/g, ''); 
+    if (!tel.startsWith('+')) {
+      if (tel.startsWith('0')) tel = '+33' + tel.substring(1);
+      else tel = '+33' + tel;
+    }
+    CONTACTS[nom] = { tel: tel, email: "" };
+    sauvegarderContacts();
+    dire(`C'est noté Monsieur. J'ai ajouté ${nom} au numéro ${tel}.`);
+    return;
+  }
+
+  // 📱 SUPPRIMER UN CONTACT
+  const supprContactMatch = req.match(/(?:supprime|efface)\s+(?:le\s+)?contact\s+([a-z]+)/);
+  if (supprContactMatch) {
+    let nom = supprContactMatch[1].trim();
+    if (CONTACTS[nom]) {
+      delete CONTACTS[nom];
+      sauvegarderContacts();
+      dire(`C'est fait Monsieur. J'ai supprimé ${nom} de vos contacts.`);
+    } else {
+      dire(`Je n'ai pas de contact nommé ${nom}, Monsieur.`);
+    }
+    return;
+  }
+
   // ----- Aide -----
   if (req.includes('aide') || req.includes('help') || req === 'commande' || req === 'commandes') {
     afficherAide(); return;
@@ -577,19 +613,19 @@ function repondre(req, raw) {
     dire("Oui Monsieur, thème sombre activé."); return;
   }
 
-  // ----- 📱 Appeler -----
+  // ----- Appeler -----
   const appelMatch = req.match(/(?:appelle|appeler|appel)\s+([a-z]+)/);
   if (appelMatch) { appelerContact(appelMatch[1]); return; }
 
-  // ----- 📱 SMS -----
+  // ----- SMS -----
   const smsMatch = req.match(/(?:envoie|envoyer)\s+(?:un\s+)?(?:sms|message)\s+(?:a|à)\s+([a-z]+)/);
   if (smsMatch) { envoyerSMS(smsMatch[1]); return; }
 
-  // ----- 📱 Mail -----
+  // ----- Mail -----
   const mailMatch = req.match(/(?:envoie|envoyer)\s+(?:un\s+)?(?:mail|courriel|email)\s+(?:a|à)\s+([a-z]+)/);
   if (mailMatch) { envoyerMail(mailMatch[1]); return; }
 
-  // ----- 📱 Ouvrir app native -----
+  // ----- Ouvrir app native -----
   const appMatch = req.match(/(?:ouvre|ouvrir|lance)\s+(whatsapp|instagram|facebook|spotify|youtube|gmail|maps|telephone|messages|chrome)/);
   if (appMatch) { ouvrirApp(appMatch[1]); return; }
 
@@ -619,7 +655,7 @@ function repondre(req, raw) {
     google: 'https://www.google.com', youtube: 'https://www.youtube.com',
     gmail: 'https://mail.google.com', wikipedia: 'https://fr.wikipedia.org',
     github: 'https://github.com', facebook: 'https://www.facebook.com',
-    twitter: 'https://twitter.com', chatgpt: 'https://chat.openai.com',
+    twitter: 'https://twitter.com', chatgpt: 'https://chatgpt.com',
     netflix: 'https://www.netflix.com', twitch: 'https://www.twitch.tv',
     amazon: 'https://www.amazon.fr'
   };
