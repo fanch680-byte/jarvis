@@ -265,7 +265,8 @@ const COMMANDES_JARVIS = {
         "Envoie un mail à Jean",
         "Ouvre WhatsApp",
         "Ouvre Instagram",
-        "Ouvre Spotify"
+        "Ouvre Spotify",
+        "Ajoute Sophie au 06 11 22 33 44"
       ]
     },
     "recherches_web": {
@@ -311,6 +312,35 @@ if (!CONTACTS) {
 
 function sauvegarderContacts() {
   localStorage.setItem('jarvis_contacts', JSON.stringify(CONTACTS));
+}
+
+// Convertit les mots-nombres français en chiffres (pour la dictée vocale)
+function extraireNumero(texte) {
+  let t = texte.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/-/g, ' ').replace(/[.,;:!?]/g, ' ');
+  
+  const unites = {
+    'zero': 0, 'un': 1, 'une': 1, 'deux': 2, 'trois': 3, 'quatre': 4, 'cinq': 5,
+    'six': 6, 'sept': 7, 'huit': 8, 'neuf': 9, 'dix': 10, 'onze': 11, 'douze': 12,
+    'treize': 13, 'quatorze': 14, 'quinze': 15, 'seize': 16
+  };
+  const dizaines = { 'vingt': 20, 'trente': 30, 'quarante': 40, 'cinquante': 50, 'soixante': 60 };
+
+  // Gère "vingt deux" -> 22
+  Object.entries(dizaines).forEach(([mot, base]) => {
+    const re = new RegExp('\\b' + mot + '\\s+(?:et\\s+)?(un|une|deux|trois|quatre|cinq|six|sept|huit|neuf)\\b', 'gi');
+    t = t.replace(re, (m, unit) => String(base + (unites[unit.toLowerCase()] || 0)));
+  });
+  // Gère les dizaines seules (ex: vingt -> 20)
+  Object.entries(dizaines).forEach(([mot, val]) => {
+    t = t.replace(new RegExp('\\b' + mot + '\\b', 'gi'), String(val));
+  });
+  // Gère les unités (ex: six -> 6)
+  Object.entries(unites).sort((a,b) => b[0].length - a[0].length).forEach(([mot, val]) => {
+    t = t.replace(new RegExp('\\b' + mot + '\\b', 'gi'), String(val));
+  });
+  
+  return t.replace(/[^0-9]/g, '');
 }
 
 /* ============================================================
@@ -525,7 +555,7 @@ function ouvrirApp(nom) {
   }
 
   if (estMobile() && /Android/i.test(navigator.userAgent)) {
-    // 🌟 CORRECTION : ajout de action=MAIN et category=LAUNCHER
+    // CORRECTION ANDROID : action MAIN et category LAUNCHER
     const intentUrl = `intent://#Intent;package=${app.pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
     window.location.href = intentUrl;
     setTimeout(() => {
@@ -569,24 +599,25 @@ function processCommand(raw) {
 }
 
 function repondre(req, raw) {
-  // 📱 AJOUTER UN CONTACT (Version intelligente et tolérante)
-  const ajoutContactMatch = req.match(/(?:ajoute|enregistre)\s+(?:(?:un|le|la)\s+)?(?:contact\s+)?(?:pour\s+)?([a-z]+)\s+(?:au|numero|numéro)\s+(.+)/);
+  // 📱 AJOUTER UN CONTACT (Version intelligente avec dictée)
+  const ajoutContactMatch = req.match(/(?:ajoute|enregistre)\s+(?:(?:un|le|la)\s+)?(?:contact\s+)?(?:pour\s+)?([a-z]+)\s+(?:aux|au|numero|a)\s+(.+)/);
   
   if (ajoutContactMatch) {
     let nom = ajoutContactMatch[1].trim();
     let telBrut = ajoutContactMatch[2].trim();
     
-    // On garde uniquement les chiffres et le signe +
-    let tel = telBrut.replace(/[^0-9+]/g, ''); 
+    // On utilise la fonction extraireNumero pour lire "zéro six..." ou "06..."
+    let tel = extraireNumero(telBrut);
     
-    // Formatage intelligent du numéro pour la France
-    if (tel.startsWith('33') && !tel.startsWith('+')) {
-      tel = '+' + tel; // Si l'utilisateur dit "33 6...", on met le +
-    } else if (tel.startsWith('0')) {
-      tel = '+33' + tel.substring(1); // Si "06...", on remplace le 0 par +33
-    } else if (!tel.startsWith('+')) {
-      tel = '+33' + tel; // Si "6..." (sans le 0), on ajoute +33
+    if (!tel || tel.length < 6) {
+      dire(`Désolé Monsieur, je n'ai pas bien saisi le numéro. Réessayez en détachant bien les chiffres.`);
+      return;
     }
+    
+    // Formatage intelligent du numéro
+    if (tel.startsWith('33') && tel.length >= 11) tel = '+' + tel;
+    else if (tel.startsWith('0') && tel.length >= 9) tel = '+33' + tel.substring(1);
+    else if (!tel.startsWith('+') && tel.length >= 9) tel = '+33' + tel;
 
     CONTACTS[nom] = { tel: tel, email: "" };
     sauvegarderContacts();
