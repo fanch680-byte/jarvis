@@ -327,16 +327,13 @@ function extraireNumero(texte) {
   };
   const dizaines = { 'vingt': 20, 'trente': 30, 'quarante': 40, 'cinquante': 50, 'soixante': 60 };
 
-  // Gère "vingt deux" -> 22
   Object.entries(dizaines).forEach(([mot, base]) => {
     const re = new RegExp('\\b' + mot + '\\s+(?:et\\s+)?(un|une|deux|trois|quatre|cinq|six|sept|huit|neuf)\\b', 'gi');
     t = t.replace(re, (m, unit) => String(base + (unites[unit.toLowerCase()] || 0)));
   });
-  // Gère les dizaines seules (ex: vingt -> 20)
   Object.entries(dizaines).forEach(([mot, val]) => {
     t = t.replace(new RegExp('\\b' + mot + '\\b', 'gi'), String(val));
   });
-  // Gère les unités (ex: six -> 6)
   Object.entries(unites).sort((a,b) => b[0].length - a[0].length).forEach(([mot, val]) => {
     t = t.replace(new RegExp('\\b' + mot + '\\b', 'gi'), String(val));
   });
@@ -536,17 +533,16 @@ function envoyerMail(nom) {
 
 function ouvrirApp(nom) {
   const appsAndroid = {
-    whatsapp:  { scheme: 'whatsapp://',    fallback: 'https://wa.me/' },
-    instagram: { scheme: 'instagram://',   fallback: 'https://instagram.com' },
-    facebook:  { scheme: 'fb://',          fallback: 'https://facebook.com' },
-    spotify:   { scheme: 'spotify://',     fallback: 'https://open.spotify.com' },
-    youtube:   { scheme: 'vnd.youtube://', fallback: 'https://youtube.com' },
-    gmail:     { scheme: 'googlegmail://', fallback: 'https://mail.google.com' },
-    maps:      { scheme: 'geo:',           fallback: 'https://maps.google.com' },
-    telephone: { scheme: 'tel:',           fallback: '' },
-    messages:  { scheme: 'sms:',           fallback: '' },
-    appareil_photo: { scheme: 'camera://', fallback: '' },
-    chrome:    { scheme: 'googlechrome://', fallback: 'https://google.com' }
+    whatsapp:  { pkg: 'com.whatsapp', scheme: 'whatsapp', fallback: 'https://wa.me/' },
+    instagram: { pkg: 'com.instagram.android', scheme: 'instagram', fallback: 'https://instagram.com' },
+    facebook:  { pkg: 'com.facebook.katana', scheme: 'fb', fallback: 'https://facebook.com' },
+    spotify:   { pkg: 'com.spotify.music', scheme: 'spotify', fallback: 'https://open.spotify.com' },
+    youtube:   { pkg: 'com.google.android.youtube', scheme: 'vnd.youtube', fallback: 'https://youtube.com' },
+    gmail:     { pkg: 'com.google.android.gm', scheme: 'googlegmail', fallback: 'https://mail.google.com' },
+    maps:      { pkg: 'com.google.android.apps.maps', scheme: 'geo', fallback: 'https://maps.google.com' },
+    telephone: { pkg: 'com.android.dialer', scheme: 'tel', fallback: '' },
+    messages:  { pkg: 'com.google.android.apps.messaging', scheme: 'sms', fallback: '' },
+    chrome:    { pkg: 'com.android.chrome', scheme: 'googlechrome', fallback: 'https://google.com' }
   };
 
   const app = appsAndroid[nom.toLowerCase()];
@@ -556,10 +552,11 @@ function ouvrirApp(nom) {
   }
 
   if (estMobile() && /Android/i.test(navigator.userAgent)) {
-    // 🌟 NOUVEAU : Utilisation du lien direct (URL Scheme)
-    window.location.href = app.scheme;
+    // 🌟 La syntaxe qui marche le mieux sur Android :
+    const intentUrl = `intent://#Intent;package=${app.pkg};scheme=${app.scheme};action=android.intent.action.VIEW;end`;
     
-    // Si l'app ne s'ouvre pas (non installée), on ouvre le site web après 1,5s
+    window.location.href = intentUrl;
+    
     setTimeout(() => {
       if (!document.hidden && app.fallback) {
         window.location.href = app.fallback;
