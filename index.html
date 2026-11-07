@@ -223,6 +223,7 @@
     <button id="btnYouTube">▶ YOUTUBE</button>
     <button id="btnCall">📞 APPEL</button>
     <button id="btnSMS">💬 SMS</button>
+    <button id="btnAddContact" style="border-color: var(--green); color: var(--green);">➕ CONTACT</button>
     <button id="btnClear" class="right-btn">🗑 EFFACER</button>
   </div>
 </div>
@@ -535,17 +536,17 @@ function envoyerMail(nom) {
 
 function ouvrirApp(nom) {
   const appsAndroid = {
-    whatsapp: { pkg: 'com.whatsapp', fallback: 'https://wa.me/' },
-    instagram: { pkg: 'com.instagram.android', fallback: 'https://instagram.com' },
-    facebook: { pkg: 'com.facebook.katana', fallback: 'https://facebook.com' },
-    spotify: { pkg: 'com.spotify.music', fallback: 'https://open.spotify.com' },
-    youtube: { pkg: 'com.google.android.youtube', fallback: 'https://youtube.com' },
-    gmail: { pkg: 'com.google.android.gm', fallback: 'https://mail.google.com' },
-    maps: { pkg: 'com.google.android.apps.maps', fallback: 'https://maps.google.com' },
-    telephone: { pkg: 'com.android.dialer', fallback: 'tel:' },
-    messages: { pkg: 'com.google.android.apps.messaging', fallback: 'sms:' },
-    appareil_photo: { pkg: 'com.android.camera', fallback: '' },
-    chrome: { pkg: 'com.android.chrome', fallback: 'https://google.com' }
+    whatsapp:  { scheme: 'whatsapp://',    fallback: 'https://wa.me/' },
+    instagram: { scheme: 'instagram://',   fallback: 'https://instagram.com' },
+    facebook:  { scheme: 'fb://',          fallback: 'https://facebook.com' },
+    spotify:   { scheme: 'spotify://',     fallback: 'https://open.spotify.com' },
+    youtube:   { scheme: 'vnd.youtube://', fallback: 'https://youtube.com' },
+    gmail:     { scheme: 'googlegmail://', fallback: 'https://mail.google.com' },
+    maps:      { scheme: 'geo:',           fallback: 'https://maps.google.com' },
+    telephone: { scheme: 'tel:',           fallback: '' },
+    messages:  { scheme: 'sms:',           fallback: '' },
+    appareil_photo: { scheme: 'camera://', fallback: '' },
+    chrome:    { scheme: 'googlechrome://', fallback: 'https://google.com' }
   };
 
   const app = appsAndroid[nom.toLowerCase()];
@@ -555,12 +556,16 @@ function ouvrirApp(nom) {
   }
 
   if (estMobile() && /Android/i.test(navigator.userAgent)) {
-    // CORRECTION ANDROID : action MAIN et category LAUNCHER
-    const intentUrl = `intent://#Intent;package=${app.pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
-    window.location.href = intentUrl;
+    // 🌟 NOUVEAU : Utilisation du lien direct (URL Scheme)
+    window.location.href = app.scheme;
+    
+    // Si l'app ne s'ouvre pas (non installée), on ouvre le site web après 1,5s
     setTimeout(() => {
-      if (app.fallback) window.location.href = app.fallback;
+      if (!document.hidden && app.fallback) {
+        window.location.href = app.fallback;
+      }
     }, 1500);
+    
     dire(`Oui Monsieur, j'ouvre ${nom}.`);
   } else if (app.fallback) {
     window.open(app.fallback, '_blank');
@@ -606,7 +611,6 @@ function repondre(req, raw) {
     let nom = ajoutContactMatch[1].trim();
     let telBrut = ajoutContactMatch[2].trim();
     
-    // On utilise la fonction extraireNumero pour lire "zéro six..." ou "06..."
     let tel = extraireNumero(telBrut);
     
     if (!tel || tel.length < 6) {
@@ -834,6 +838,26 @@ document.getElementById('btnSMS').onclick = () => {
   const t = cmdInput.value.trim();
   if (t) { envoyerSMS(t.toLowerCase()); cmdInput.value = ''; }
   else dire("À qui voulez-vous envoyer un SMS ? Tapez le nom d'abord.");
+};
+document.getElementById('btnAddContact').onclick = () => {
+  let nom = prompt("Quel est le nom du contact ? (ex: Sophie)");
+  if (!nom) return;
+  let num = prompt("Quel est le numéro de téléphone ? (ex: 0611223344)");
+  if (!num) return;
+
+  let telClean = extraireNumero(num);
+  if (!telClean || telClean.length < 6) {
+    alert("Numéro invalide. Veuillez réessayer.");
+    return;
+  }
+
+  if (telClean.startsWith('33') && telClean.length >= 11) telClean = '+' + telClean;
+  else if (telClean.startsWith('0') && telClean.length >= 9) telClean = '+33' + telClean.substring(1);
+  else if (!telClean.startsWith('+') && telClean.length >= 9) telClean = '+33' + telClean;
+
+  CONTACTS[nom.toLowerCase()] = { tel: telClean, email: "" };
+  sauvegarderContacts();
+  dire(`C'est noté Monsieur. J'ai ajouté ${nom} au numéro ${telClean}.`);
 };
 document.getElementById('btnClear').onclick = () => {
   journal.innerHTML = '';
