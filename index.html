@@ -525,7 +525,7 @@ function ouvrirApp(nom) {
   }
 
   if (estMobile() && /Android/i.test(navigator.userAgent)) {
-    // 🌟 CORRECTION ICI : ajout de action=MAIN et category=LAUNCHER
+    // 🌟 CORRECTION : ajout de action=MAIN et category=LAUNCHER
     const intentUrl = `intent://#Intent;package=${app.pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
     window.location.href = intentUrl;
     setTimeout(() => {
@@ -569,15 +569,25 @@ function processCommand(raw) {
 }
 
 function repondre(req, raw) {
-  // 📱 AJOUTER UN CONTACT À LA VOIX
-  const ajoutContactMatch = req.match(/(?:ajoute|enregistre)\s+(?:un\s+)?contact\s+(?:pour\s+)?([a-z]+)\s+(?:au|numero|numéro)\s+([0-9+ ]+)/);
+  // 📱 AJOUTER UN CONTACT (Version intelligente et tolérante)
+  const ajoutContactMatch = req.match(/(?:ajoute|enregistre)\s+(?:(?:un|le|la)\s+)?(?:contact\s+)?(?:pour\s+)?([a-z]+)\s+(?:au|numero|numéro)\s+(.+)/);
+  
   if (ajoutContactMatch) {
     let nom = ajoutContactMatch[1].trim();
-    let tel = ajoutContactMatch[2].replace(/\s/g, ''); 
-    if (!tel.startsWith('+')) {
-      if (tel.startsWith('0')) tel = '+33' + tel.substring(1);
-      else tel = '+33' + tel;
+    let telBrut = ajoutContactMatch[2].trim();
+    
+    // On garde uniquement les chiffres et le signe +
+    let tel = telBrut.replace(/[^0-9+]/g, ''); 
+    
+    // Formatage intelligent du numéro pour la France
+    if (tel.startsWith('33') && !tel.startsWith('+')) {
+      tel = '+' + tel; // Si l'utilisateur dit "33 6...", on met le +
+    } else if (tel.startsWith('0')) {
+      tel = '+33' + tel.substring(1); // Si "06...", on remplace le 0 par +33
+    } else if (!tel.startsWith('+')) {
+      tel = '+33' + tel; // Si "6..." (sans le 0), on ajoute +33
     }
+
     CONTACTS[nom] = { tel: tel, email: "" };
     sauvegarderContacts();
     dire(`C'est noté Monsieur. J'ai ajouté ${nom} au numéro ${tel}.`);
