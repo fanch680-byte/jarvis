@@ -542,7 +542,10 @@ function ouvrirApp(nom) {
     maps:      { pkg: 'com.google.android.apps.maps', scheme: 'geo', fallback: 'https://maps.google.com' },
     telephone: { pkg: 'com.android.dialer', scheme: 'tel', fallback: '' },
     messages:  { pkg: 'com.google.android.apps.messaging', scheme: 'sms', fallback: '' },
-    chrome:    { pkg: 'com.android.chrome', scheme: 'googlechrome', fallback: 'https://google.com' }
+    chrome:    { pkg: 'com.android.chrome', scheme: 'googlechrome', fallback: 'https://google.com' },
+
+        // 🌟 LIGNE À AJOUTER POUR LA BANQUE :
+    banque: { pkg: 'android.mobilebanking', scheme: 'mobilebanking', fallback: 'https://www.votre-banque.fr' }
   };
 
   const app = appsAndroid[nom.toLowerCase()];
@@ -668,7 +671,7 @@ function repondre(req, raw) {
   if (mailMatch) { envoyerMail(mailMatch[1]); return; }
 
   // ----- Ouvrir app native -----
-  const appMatch = req.match(/(?:ouvre|ouvrir|lance)\s+(whatsapp|instagram|facebook|spotify|youtube|gmail|maps|telephone|messages|chrome)/);
+  const appMatch = req.match(/(?:ouvre|ouvrir|lance)\s+(whatsapp|instagram|facebook|spotify|youtube|gmail|maps|telephone|messages|chrome|appareil photo|camera|photo|telegram|tiktok|snapchat|linkedin|netflix|twitch|deezer|uber|discord|banque)/);
   if (appMatch) { ouvrirApp(appMatch[1]); return; }
 
   // ----- Salutations -----
