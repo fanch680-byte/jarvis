@@ -671,7 +671,7 @@ function repondre(req, raw) {
   if (mailMatch) { envoyerMail(mailMatch[1]); return; }
 
   // ----- Ouvrir app native -----
-  const appMatch = req.match(/(?:ouvre|ouvrir|lance)\s+(whatsapp|instagram|facebook|spotify|youtube|gmail|maps|telephone|messages|chrome|appareil photo|camera|photo|telegram|tiktok|snapchat|linkedin|netflix|twitch|deezer|uber|discord|banque)/);
+  const appMatch = req.match(/(?:ouvre|ouvrir|lance)\s+(whatsapp|instagram|facebook|spotify|youtube|gmail|maps|telephone|messages|chrome|appareil photo|camera|photo|telegram|tiktok|snapchat|linkedin|netflix|twitch|deezer|uber|discord|banque|caisse)/);
   if (appMatch) { ouvrirApp(appMatch[1]); return; }
 
   // ----- Salutations -----
